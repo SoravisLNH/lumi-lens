@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<script>
+  // Keep the app on the same domain as Google sign-in, so phones can finish logging in.
+  if (location.hostname === "lumi-lens.web.app") location.replace("https://lumi-lens.firebaseapp.com" + location.pathname + location.search + location.hash);
+  // Apply the saved theme before anything paints.
+  (function () {
+    try {
+      var s = JSON.parse(localStorage.getItem("lumi.settings") || "{}");
+      var mode = s.theme || "system";
+      var dark = mode === "dark" || (mode === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
+      document.documentElement.dataset.theme = dark ? "dark" : "light";
+      document.documentElement.dataset.accent = s.accent || "violet";
+    } catch (e) { document.documentElement.dataset.theme = "dark"; }
+  })();
+</script>
+<script>
+  // Start-up guard: if the app has not shown anything after a few seconds, show what went wrong and offer a clean reload.
+  window.__errs = [];
+  addEventListener("error", function (e) {
+    var t = e.target;
+    if (t && t !== window && (t.src || t.href)) { __errs.push("load failed: " + String(t.src || t.href).split("/").pop()); return; }
+    __errs.push((e.message || "error") + (e.filename ? " @" + e.filename.split("/").pop() + ":" + e.lineno : ""));
+  }, true);
+  addEventListener("unhandledrejection", function (e) { __errs.push("promise: " + (e.reason && (e.reason.code || e.reason.message) || e.reason)); });
+  window.__lumiReset = function () {
+    var done = function () { location.replace(location.pathname + "?fresh=" + Date.now()); };
+    var jobs = [];
+    if (navigator.serviceWorker) jobs.push(navigator.serviceWorker.getRegistrations().then(function (rs) { return Promise.all(rs.map(function (r) { return r.unregister(); })); }));
+    if (window.caches) jobs.push(caches.keys().then(function (ks) { return Promise.all(ks.map(function (k) { return caches.delete(k); })); }));
+    Promise.all(jobs).then(done, done);
+  };
+  setTimeout(function () {
+    var l = document.getElementById("login"), a = document.getElementById("app");
+    if (!l || !a || !(l.hidden && a.hidden)) return;
+    var box = document.createElement("div");
+    box.style.cssText = "position:fixed;inset:auto 16px 40px;z-index:99;padding:16px;border-radius:18px;background:#2a2750;color:#ece9ff;font:14px/1.5 system-ui,sans-serif;box-shadow:0 10px 30px rgba(0,0,0,.5)";
+    box.innerHTML = "<b>แอปเริ่มทำงานไม่สำเร็จค่ะ</b><div style='margin:6px 0 10px;font:12px/1.4 ui-monospace,monospace;word-break:break-all;color:#a29fc4'></div><button type='button' style='width:100%;height:44px;border:0;border-radius:999px;background:linear-gradient(135deg,#8b7cf6,#6aa8f0);color:#fff;font-weight:600'>ล้างแคชแล้วโหลดใหม่</button>";
+    box.querySelector("div").textContent = (__errs.join(" | ") || "ไม่มีข้อความ error") + " · v15";
+    box.querySelector("button").onclick = __lumiReset;
+    document.body.appendChild(box);
+  }, 8000);
+</script>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Lumi Lens</title>
+<meta name="description" content="ส่องกล้อง อ่านข้อความ แปล และอธิบายคำศัพท์ยาก">
+<meta name="theme-color" content="#0b0a18">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Lumi Lens">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sarabun:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600;1,700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/style.css?v=15">
+</head>
+<body>
+
+<!-- ============ boot ============ -->
+<div class="boot" id="boot">
+  <div class="logo-tile"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/><path d="M11 7.8l.9 2.3 2.3.9-2.3.9-.9 2.3-.9-2.3-2.3-.9 2.3-.9z" fill="#fff" stroke="none"/></svg></div>
+  <p class="dots">กำลังเปิด Lumi Lens</p>
+</div>
+
+<!-- ============ login ============ -->
+<section class="login" id="login" hidden>
+  <div class="login-card">
+    <div class="logo-tile big"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/><path d="M11 7.8l.9 2.3 2.3.9-2.3.9-.9 2.3-.9-2.3-2.3-.9 2.3-.9z" fill="#fff" stroke="none"/></svg></div>
+    <h1>Lumi Lens</h1>
+    <p class="tag">ส่องกล้องไปที่ข้อความ แล้วอ่านคำแปลกับคำศัพท์ยาก ทุกหน้าที่แปลเก็บไว้ในแกลเลอรีให้กลับมาทบทวนได้</p>
+    <button class="btn-grad wide" id="signin" type="button">
+      <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="currentColor" d="M44.5 20H24v8.5h11.8C34.7 33.9 30.1 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 4.1 29.6 2 24 2 11.8 2 2 11.8 2 24s9.8 22 22 22c11 0 21-8 21-22 0-1.3-.2-2.7-.5-4z"/></svg>
+      เข้าสู่ระบบด้วย Google
+    </button>
+    <p class="err" id="loginErr" hidden></p>
+  </div>
+</section>
+
+<!-- ============ main app (camera) ============ -->
+<div class="app" id="app" hidden>
+  <main class="stage" id="stage">
+    <video id="cam" playsinline muted autoplay></video>
+    <img id="photo" alt="ภาพที่ถ่ายไว้" hidden>
+    <div class="ov-layer" id="ov" hidden></div>
+    <div class="scanbar" id="scan" hidden></div>
+    <div class="reticle" id="reticle" aria-hidden="true" hidden><i></i><i></i><i></i><i></i></div>
+    <div class="cropmask" id="cropMask" hidden aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+    <div class="cropbox" id="cropBox" hidden aria-label="กรอบอ่านข้อความ ลากเพื่อย้าย ลากมุมเพื่อปรับขนาด"><i data-h="nw"></i><i data-h="ne"></i><i data-h="sw"></i><i data-h="se"></i></div>
+    <svg class="still" id="still" viewBox="0 0 44 44" hidden aria-hidden="true"><circle cx="22" cy="22" r="18" class="still-bg"/><circle cx="22" cy="22" r="18" class="still-fg" id="stillFg"/></svg>
+    <div class="focus-ring" id="focusRing"></div>
+    <div class="flash" id="flash"></div>
+    <div class="cam-msg" id="camMsg" hidden></div>
+  </main>
+
+  <header class="topbar">
+    <div class="lang glass">
+      <label class="lsel"><select id="hSrc" aria-label="ภาษาในภาพ"><option value="auto">อัตโนมัติ</option><option value="English">อังกฤษ</option><option value="Thai">ไทย</option><option value="Japanese">ญี่ปุ่น</option><option value="Chinese">จีน</option><option value="Korean">เกาหลี</option><option value="French">ฝรั่งเศส</option><option value="German">เยอรมัน</option><option value="Spanish">สเปน</option></select></label>
+      <button class="sw" id="swap" type="button" aria-label="สลับภาษา"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M7 7h12l-3-3M17 17H5l3 3"/></svg></button>
+      <label class="lsel"><select id="hTgt" aria-label="แปลเป็น"><option value="Thai">ไทย</option><option value="English">อังกฤษ</option><option value="Japanese">ญี่ปุ่น</option><option value="Chinese">จีน</option><option value="Korean">เกาหลี</option><option value="French">ฝรั่งเศส</option><option value="German">เยอรมัน</option><option value="Spanish">สเปน</option></select></label>
+    </div>
+  </header>
+
+    <button class="round glass setbtn" id="openSet" type="button" aria-label="ตั้งค่า">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+    </button>
+  <button class="round glass lensbtn" id="lensBtn" type="button" aria-label="เปลี่ยนเลนส์กล้อง" hidden>
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.2"/><path d="M17.5 3.5l1.5 1.5-1.5 1.5"/></svg>
+  </button>
+  <div class="subbar">
+    <div class="livechip glass" id="liveChip" hidden></div>
+    <button class="capchip glass" id="frameChip" type="button" aria-pressed="false" hidden>กรอบ: ปิด</button>
+  </div>
+  <button class="xbtn glass" id="freezeX" type="button" aria-label="กลับไปที่กล้อง" hidden><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+
+  <div class="hint" id="hint">เล็งข้อความให้อยู่ในกรอบ แล้วกดปุ่มถ่าย</div>
+
+  <div class="zoomtip" id="zoomTip" hidden>1×</div>
+
+  <!-- overlay result actions -->
+  <div class="ovbar" id="ovBar" hidden>
+    <button class="chip glass" id="ovOrig" type="button" aria-pressed="false">ดูต้นฉบับ</button>
+    <button class="chip glass" id="ovCopy" type="button">คัดลอก</button>
+    <button class="chip grad" id="ovSave" type="button"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>บันทึก</button>
+  </div>
+
+  <!-- camera controls -->
+  <div class="controls" id="controls">
+    <div class="zoombar" id="zoomBar" role="group" aria-label="ซูม"><button type="button" data-z="1" aria-pressed="true">1×</button></div>
+    <div class="modes" id="segMode" role="group" aria-label="รูปแบบการแสดงคำแปล">
+      <button type="button" data-v="card">การ์ด</button><button type="button" data-v="overlay">แปะทับ</button>
+    </div>
+    <div class="ctrl">
+      <label class="sidebtn" for="pick" aria-label="เลือกรูปจากเครื่อง">
+        <span class="ic glass"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="15" height="14" rx="2.5"/><circle cx="8" cy="10" r="1.6"/><path d="M18 15l-4-4-7 8"/><path d="M20.5 2.5v5M18 5h5"/></svg></span>
+        <small>เลือกรูป</small>
+      </label>
+      <input class="vh" type="file" id="pick" accept="image/*">
+      <button class="shutter" id="shutter" type="button" aria-label="ถ่ายภาพ"></button>
+      <button class="sidebtn" id="openGal" type="button" aria-label="บทความที่แปลแล้ว">
+        <span class="ic glass"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5"/><path d="M8.5 8h7M8.5 11.5h5"/></svg></span>
+        <small>บทความ</small>
+      </button>
+    </div>
+  </div>
+
+  <!-- result sheet -->
+  <section class="sheet away" id="sheet" aria-label="ผลการแปล">
+    <div class="handle" id="grip" role="button" tabindex="0" aria-label="ย่อหรือขยายแผง"><i></i></div>
+    <div class="sheet-h">
+      <div class="t"><b id="resTitle">กำลังอ่านข้อความ</b><small id="resSub"></small></div>
+      <button class="chip grad keep" id="keepBtn" type="button" hidden><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>บันทึก</button>
+      <button class="round soft xs" id="retake" type="button" aria-label="ปิดแล้วกลับไปที่กล้อง"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <div class="sbody" id="sbody">
+      <div class="card">
+        <div class="lbl">ต้นฉบับ<span class="sp"></span><button type="button" id="editBtn" hidden>แก้ไข</button></div>
+        <div class="src" id="srcView"></div>
+        <textarea id="srcEdit" hidden spellcheck="false" aria-label="ข้อความที่อ่านได้ แก้ไขได้ก่อนแปล"></textarea>
+        <div class="err" id="srcErr" hidden></div>
+        <div class="go-row" id="goRow" hidden><button class="btn-grad" id="goTr" type="button" disabled>✦ แปลเลย</button></div>
+      </div>
+      <div class="card" id="trCard">
+        <div class="lbl">คำแปล<span class="sp"></span><span class="st" id="trSt"></span></div>
+        <div class="tr" id="trText"></div>
+      </div>
+      <div id="wordsBox">
+        <div class="lbl pad">คำศัพท์น่ารู้<span class="st" id="wSt"></span></div>
+        <div class="words" id="words"></div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- ============ gallery ============ -->
+<section class="page" id="gal" hidden>
+  <div class="ph">
+    <button class="round soft" type="button" data-back aria-label="กลับ"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
+    <h2>บทความที่แปลแล้ว</h2>
+  </div>
+  <div class="pbody">
+    <div class="seg" id="galSeg"><button type="button" data-v="articles" aria-pressed="true">บทความ</button><button type="button" data-v="photos" aria-pressed="false">รูปทั้งหมด</button></div>
+    <div id="galPhotos" hidden></div>
+    <div id="galArticles">
+      <label class="search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input id="q" type="search" placeholder="ค้นหาบทความ" autocomplete="off"></label>
+      <div id="alist"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ viewer ============ -->
+<section class="page" id="viewer" hidden>
+  <div class="ph">
+    <button class="round soft" type="button" data-back aria-label="กลับ"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
+    <h2 id="vTitle">บทความ</h2>
+    <button class="round soft" type="button" id="vMore" aria-label="ตัวเลือกบทความ"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></button>
+  </div>
+  <div class="pbody vbody">
+    <div class="vimg" id="vImgBox"><img id="vImg" alt=""><button class="vnav prev" id="vPrev" type="button" aria-label="หน้าก่อนหน้า">‹</button><button class="vnav next" id="vNext" type="button" aria-label="หน้าถัดไป">›</button></div>
+    <div class="vdots" id="vDots"></div>
+    <div id="vContent"></div>
+  </div>
+  <div class="menu-veil" id="vMenu" hidden>
+    <div class="menu">
+      <button type="button" id="mContinue">สแกนต่อในบทความนี้</button>
+      <button type="button" id="mRename">เปลี่ยนชื่อบทความ</button>
+      <button type="button" id="mDelete" class="danger">ลบบทความนี้</button>
+      <button type="button" id="mClose" class="muted">ปิด</button>
+    </div>
+  </div>
+  <div class="menu-veil" id="vRenameBox" hidden>
+    <div class="menu pad">
+      <b>ชื่อบทความ</b>
+      <input id="renameIn" maxlength="80" aria-label="ชื่อบทความใหม่">
+      <div class="row2"><button type="button" class="chip soft" id="renameNo">ยกเลิก</button><button type="button" class="chip grad" id="renameYes">บันทึก</button></div>
+    </div>
+  </div>
+  <div class="menu-veil" id="vDelBox" hidden>
+    <div class="menu pad">
+      <b>ลบบทความนี้และทุกหน้าในนั้น?</b>
+      <span class="muted-t">ลบแล้วกู้คืนไม่ได้นะคะ</span>
+      <div class="row2"><button type="button" class="chip soft" id="delNo">ไม่ลบ</button><button type="button" class="chip danger" id="delYes">ลบเลย</button></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ settings ============ -->
+<section class="page" id="set" hidden>
+  <div class="ph">
+    <button class="round soft" type="button" data-back aria-label="กลับ"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
+    <h2>ตั้งค่า</h2>
+  </div>
+  <div class="pbody">
+    <div class="sectionlbl">หน้าตา</div>
+    <div class="list">
+      <div class="row col"><span class="tx">โหมดสี</span>
+        <div class="seg sm" id="segTheme"><button type="button" data-v="system">ตามเครื่อง</button><button type="button" data-v="light">สว่าง</button><button type="button" data-v="dark">มืด</button></div>
+      </div>
+      <div class="row col"><span class="tx">สีธีม</span>
+        <div class="swatches" id="swatches">
+          <button type="button" data-v="violet" aria-label="ม่วงฟ้า"></button><button type="button" data-v="rose" aria-label="ชมพูพีช"></button>
+          <button type="button" data-v="mint" aria-label="มิ้นต์"></button><button type="button" data-v="ocean" aria-label="น้ำทะเล"></button>
+          <button type="button" data-v="sunset" aria-label="ส้มทอง"></button>
+        </div>
+      </div>
+    </div>
+    <div class="sectionlbl">การแปล</div>
+    <div class="list">
+      <div class="row col"><span class="tx">อธิบายคำศัพท์ตั้งแต่ระดับ<small>คำที่ง่ายกว่านี้จะไม่ขึ้นการ์ด</small></span>
+        <div class="seg sm" id="seg"><button type="button" data-v="A2">A2</button><button type="button" data-v="B1">B1</button><button type="button" data-v="B2">B2</button><button type="button" data-v="C1">C1</button><button type="button" data-v="C2">C2</button></div>
+      </div>
+      <div class="row col"><span class="tx">โหมด Gemini</span>
+        <div class="seg sm" id="segQ"><button type="button" data-v="fast">เร็ว</button><button type="button" data-v="accurate">แม่นขึ้น</button></div>
+      </div>
+      <div class="row"><span class="tx">แปลทันทีหลังถ่าย<small>ปิดไว้ถ้าอยากแก้ข้อความก่อนแปล</small></span><button class="tog" type="button" id="autoTr" aria-label="แปลทันทีหลังถ่าย"></button></div>
+    </div>
+    <div class="list">
+      <div class="row"><span class="tx" id="whoName"></span><button class="link-danger" id="signout" type="button">ออกจากระบบ</button></div>
+    </div>
+  </div>
+</section>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script type="module" src="/app.js?v=15"></script>
+</body>
+</html>

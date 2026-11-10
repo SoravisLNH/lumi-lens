@@ -1,0 +1,20 @@
+{
+  "name": "lumi-lens",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "build": "esbuild src/main.js --bundle --format=esm --minify --target=es2020 --outfile=public/app.js",
+    "deploy": "npm run build && firebase deploy"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "esbuild": "^0.24.2",
+    "firebase": "^13.0.0"
+  },
+  "devDependencies": {
+    "playwright": "^1.49.1"
+  },
+  "private": true
+}
